@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!DOCTYPE squad SYSTEM "squad.dtd">
+<?xml-stylesheet href="squad.xsl?" type="text/xsl"?>
+<squad nick="FOne">
+  <name>ForceOne</name>
+  <email>forceone@gmail.com</email>
+  <picture>logo.paa</picture>
+  <title>ForceOne</title>
+  <web></web>
+  <member id="7656119808942183" nick="Netreag">
+    <name>Netreag</name>
+    <email>N/A</email>
+    <icq>N/A</icq>
+    <remark>My Remark?</remark>
+  </member>
+</squad>

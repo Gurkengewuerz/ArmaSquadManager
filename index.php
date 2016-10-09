@@ -13,7 +13,6 @@
 	SESSION_START();
 	include_once('inc/FlashMessages.class.php');
 	require_once('config.php');
-	require_once('inc/database.php');
 	require_once('inc/rank_images.php');
 	$message = new FlashMessages();
 	$xml = simplexml_load_file("squad.xml");
@@ -63,8 +62,8 @@
 		   	}
 		}
 	} 
-
-	if(isset($_POST['submit']) && $_POST['addInput_UID'] == NULL && $_POST['addInput_IGN'] != NULL) {
+	
+if(isset($_POST['submit']) && $_POST['addInput_UID'] == NULL && $_POST['addInput_IGN'] != NULL) {
 		$message->add('danger', "You need to enter your UID!");
 	} elseif(isset($_POST['submit']) && $_POST['addInput_IGN'] == NULL && $_POST['addInput_UID'] != NULL) {
 		$message->add('danger', "You need to enter your ingame name!");
@@ -74,12 +73,9 @@
 		$message->add('danger', "UID, IGN, Name or IM can't exceed 20 characters!");
 	} elseif(isset($_POST['submit']) && strlen($_POST['addInput_Email']) > 30){
 		$message->add('danger', "Email can't exceed 30 characters!");
-	} elseif(isset($_POST['submit']) && $_POST['addInput_Password'] == NULL){
-		$message->add('danger', "You need to enter a password!");
-	}elseif (isset($_POST['submit'])){
+	} elseif(isset($_POST['submit'])){
 		$UID = $_POST['addInput_UID'];
 		$IGN = $_POST['addInput_IGN'];
-		$PASS = md5($_POST['addInput_Password']);
 		if(isset($_POST['addInput_Name'])){
 			$Name = $_POST['addInput_Name'];
 		} if($_POST['addInput_Name'] == NULL) {
@@ -124,12 +120,9 @@
 		$dom->loadXML($xml->asXML());
 		//echo $dom->saveXML();
 		$dom->save('squad.xml');
-
-		mysqli_query($db, "INSERT INTO squad (`PID`, `Password`, `Nick`) VALUES ('".$UID."','".$PASS."','".$IGN."')");
-
 		$message->add('success', "Successfully added to the squad!");
 	}
-
+	
 	if(isset($_POST['submit_admin']) && $_POST['password_admin'] == $admin_pass){
 		$message->add('success', "Successfully signed in as admin!");
 		$_SESSION['loggedin'] = 'true';
@@ -156,41 +149,24 @@
 				$dom->loadXML($xml->asXML());
 				//echo $dom->saveXML();
 				$dom->save('squad.xml');
-
-				mysqli_query($db, "DELETE FROM squad WHERE PID = '$remove_UID' AND Nick = '$remove_NICK'");
 			}
 		}
 	}
 
-	if(isset($_POST['rank_submit']) && isset($_POST['rank_select']) && isset($_POST['rank_speciality'])){
-		foreach($xml as $seg){
-			if($seg['id'] == $_POST['select_hidden']){
-				$dom=dom_import_simplexml($seg);
-				$newrank = str_replace("_", " ", $_POST['rank_select']);
-				$speciality = " - " . $_POST['rank_speciality'];
-				if($speciality != ' - '){
-					$new_rank = $newrank . $speciality;
-				} else {
-					$new_rank = $newrank;
-				}
-				$seg->remark = $new_rank;
-
-			 	$dom = new DOMDocument("1.0");
-				$dom->preserveWhiteSpace = false;
-				$dom->formatOutput = true;
-				$dom->loadXML($xml->asXML());
-				//echo $dom->saveXML();
-				$dom->save('squad.xml');
-			}
-		}
-	} elseif(isset($_POST['rank_submit']) && isset($_POST['rank_speciality'])){
+	if(isset($_POST['rank_submit']) && isset($_POST['rank_speciality']) && isset($_POST['new_ign'])){
 		foreach($xml as $seg){
 			if($seg['id'] == $_POST['select_hidden']){
 				$dom=dom_import_simplexml($seg);
 				$newrank = str_replace("_", " ", $_POST['rank_select']);
 				$speciality =$_POST['rank_speciality'];
-				$seg->remark = $speciality;
-
+				$newIGN =$_POST['new_ign'];
+				if(!empty($speciality)){
+					$seg->remark = $speciality;	
+				}
+				if(!empty($newIGN)){
+					$seg['nick'] = $newIGN;
+				}
+				
 			 	$dom = new DOMDocument("1.0");
 				$dom->preserveWhiteSpace = false;
 				$dom->formatOutput = true;
@@ -200,68 +176,7 @@
 			}
 		}
 	}
-
-
-	if(isset($_POST['submit_user']) && $_POST['user_uid'] != '' && $_POST['user_password'] != ''){
-		$user_password = md5($_POST['user_password']); ;
-		$user_pid = $_POST['user_uid'];
-
-		$query = mysqli_query($db,"SELECT * FROM squad WHERE PID = '$user_pid'");
-		while($row = mysqli_fetch_array($query)){
-			$db_pid = $row['PID'];
-			$db_password = $row['Password'];
-		} 
-
-		if($user_pid == $db_pid && $user_password == $db_password){
-			$message->add('success', 'Successfully signed in!');
-			$_SESSION['loggedin_user'] = $db_pid;
-		} else {
-			$message->add('danger', 'There was an error signing in!');
-		}
-	}
-
-	if(isset($_POST['save_user'])){
-		foreach($xml as $seg){
-			if($seg['id'] == $_SESSION['loggedin_user']){
-				$dom=dom_import_simplexml($seg);
-				$speciality = $_POST['rank_speciality'];
-				if($_POST['user_name'] != ''){
-					$user_name = $_POST['user_name'];
-					$PID = $seg['id'];
-					mysqli_query($db, "UPDATE squad SET Nick = '$user_name' WHERE PID = '$PID'");
-				} else {
-					$user_name = $seg['nick'];
-				}
-				if($_POST['user_im'] != ''){
-					$user_im = $_POST['user_im'];
-				} else {
-					$user_im = $seg->icq;
-				}
-				if($_POST['user_remark'] != '' && $enable_ranks == 'true' && strpos($_POST['user_remark'], '-') === false){
-					$str = $seg->remark;
-					$str = substr($str,0,strrpos($str, '-'));
-					$user_remark = $str . " - " . $_POST['user_remark'];
-				} elseif($_POST['user_remark'] != '' && $enable_ranks == 'true' && strpos($_POST['user_remark'], '-') === true) {
-					$message->add('danger', 'Your remark can not contain dashes!');
-				} elseif($_POST['user_remark'] != '' && $enable_ranks != 'true') {
-					$user_remark = $_POST['user_remark'];
-				} else {
-					$user_remark = $seg->remark;
-				}
-				$seg['nick'] = $user_name;
-				$seg->icq = $user_im;
-				$seg->remark = $user_remark;
-
-			 	$dom = new DOMDocument("1.0");
-				$dom->preserveWhiteSpace = false;
-				$dom->formatOutput = true;
-				$dom->loadXML($xml->asXML());
-				//echo $dom->saveXML();
-				$dom->save('squad.xml');
-			}
-		}
-	}
-
+	
 	if(isset($_GET['pid'])){
 		include('inc/password_generator.php');
 		die();
@@ -272,10 +187,10 @@
 <html>
 
 <head>
-	<title></title>
+	<title>[FOne] Squad Manager</title>
 	<link rel="stylesheet" type="text/css" href="style.css">
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
-	
+	<link rel="shortcut icon" href="favicon.ico" />
 	<!-- Latest compiled and minified JavaScript -->
 	<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
 	<script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
@@ -321,67 +236,42 @@
 								echo '
 								Clantag = [' .$squad_info["nick"]. ']<br>
 								Name = ' . $squad_info->name .'<br>
-								Email = ' . $squad_info->email .'<br>
-								Website = <a href="'.$squad_info->web.'">' . $squad_info->web . '</a>';
+								Email = <a href="mailto:help@unknown.tld"> Email</a><br>
+								Internetseite = <a href="http://www.mysite.tld/"> Homepage</a>
+								<br><font color="green"><b>Player ID</b></font> = <a href="http://community.bistudio.com/wiki/squad.xml#How_to_get_your_Player-UID">How to find it</a>
+								<br><br>
+								<b>Squad URL - Dieser Link kommt  in dein Profil:</b><br>' . $squad_url;
 							}
 						}
 					}
 					?>
 					</form>
 				</div>
+				<?php
+				if($_SESSION['loggedin']) {
+				?>
 				<div class="header_left">
-					Squad Registration form
+					Spieler Hinzufügen
 				</div>
 				<div class="box">
 					<?php if(isset($_POST['submit'])){ $message->display(); } ?>
 					<form name="regform" method="POST">
 						<input class="addInput" type="text" name="addInput_UID" placeholder="* Player ID">
-						<input class="addInput" type="text" name="addInput_IGN" placeholder="* Ingame name(Has to be 100% correct)">
-						<input class="addInput" type="password" name="addInput_Password" placeholder="* Password">
+						<input class="addInput" type="text" name="addInput_IGN" placeholder="* Ingame Name(Muss 1:1 sein)">
 						<input class="addInput" type="text" name="addInput_Name" placeholder="Name">
-						<input class="addInput" type="text" name="addInput_Email" placeholder="Email Address">
-						<input class="addInput" type="text" name="addInput_ICQ" placeholder="IM">
+						<input class="addInput" type="text" name="addInput_Email" placeholder="Email Addresse">
+						<input class="addInput" type="text" name="addInput_ICQ" placeholder="IM/Skype/ICQ">
 						<?php
 							if($enable_remark == 'true'){
-								echo '<input class="addInput" type="text" name="addInput_Remark" placeholder="Remark(Ex: I\'m a cool guy!)">';
+								echo '<input class="addInput" type="text" name="addInput_Remark" placeholder="Bemerkung">';
 							}
 						?>
 						<input class="addBtn" type="submit" name="submit">
 					</form>
-					<br>
-					<font color="red">*</font> = Required
-					<br> <font color="green"><b>Player ID</b></font> = <a href="http://community.bistudio.com/wiki/squad.xml#How_to_get_your_Player-UID">How to find it</a>
-					<br> <font color="green"><b>IM</b></font> = Instant messager, aka on skype, steam, etc
-					<br><br>
-					<b>Squad URL - Put the link on your profile:</b><br> <?php echo $squad_url; ?>
 				</div>
-				<div class="header_left">
-					<?php 
-					if(!$_SESSION['loggedin_user']){ 
-						echo 'User Login';
-					} else {
-						echo 'User Controlpanel';
-					}
-					?>
-				</div>
-				<div class="box">
-					<?php if(isset($_POST['submit_user']) or $_POST['save_user']){ $message->display(); } ?>
-					<form name="userform" method="POST"> 
-					<?php if(!$_SESSION['loggedin_user']) { ?>
-					<input class="addInput" type="text" name="user_uid" placeholder="Player ID">
-					<input class="addInput" type="password" name="user_password" placeholder="Password">
-					<input class="addBtn" type="submit" name="submit_user">
-					<?php } elseif($_SESSION['loggedin_user']) {?>
-					<input class="addInput" type="text" placeholder="Ingame name" name="user_name">
-					<input class="addInput" type="text" placeholder="IM" name="user_im">
-					<?php if($enable_remark != 'false'){?>
-					<input class="addInput" type="text" placeholder="Remark" name="user_remark">
-					<?php } ?>
-					<input class="addBtn" type="submit" value="Save" name="save_user">
-					<input class="addBtn" type="submit" value="Sign Out" name="logout_admin">
-					<?php }?>
-					</form>
-				</div>
+				<?php
+				}
+				?>
 				<div class="header_left">
 					Administrator Login
 				</div>
@@ -389,7 +279,7 @@
 					<?php if(isset($_POST['submit_admin'])){ $message->display(); } ?>
 					<?php if(!$_SESSION['loggedin']){ ?>
 					<form name="adminform" method="POST">
-						<input class="addInput" type="password" name="password_admin" placeholder="Password">
+						<input class="addInput" type="password" name="password_admin" placeholder="Passwort">
 						<input class="addBtn" type="submit" name="submit_admin">
 					</form>
 					<?php } elseif($_SESSION['loggedin']) { ?>
@@ -400,14 +290,15 @@
 					<?php } ?>
 				</div>
 				<div class="squad_footer">
-					&copy; Marcuz
+				&copy; Niklas 
+					<div style="font-size:.8em"> Marcuz </div>
 				</div>
 			</div>
 		</div>
 		<div class="col-lg-8">
 			<div class="squad_box">
 				<div class="header_squad">
-					Squad Members
+					Squad Mitglieder
 				</div>
 				<div class="squad_content">
 					<table class="table-custom table-striped-custom" width="100%">
@@ -441,47 +332,35 @@
 										$members_name = $member["nick"];
 										$members_im = $member->icq;
 										$members_remark = $member->remark;
-										if($enable_ranks == 'true'){
-											include('inc/rank_images.php');
-										}
-
 										if(!$_SESSION['loggedin']){
 										echo "<tr>
 										<td>". $members_uid ."</td>
 										<td>". $members_name ."</td>
 										<td>". $members_im ."</td>
 										</tr>";
-										} elseif ($_SESSION['loggedin'] && $enable_ranks == 'true'){
+										}
+										
+										if ($_SESSION['loggedin'] && $enable_ranks != 'true'){
 										echo "<tr>
 										<td>". $members_uid ."</td>
 										<td>". $members_name ."</td>
 										<td>". $members_im ."</td>
 										<form name='promoteform' method='POST'>
 										<input type='hidden' name='select_hidden' value='". $members_uid ."'>
-										<td style='margin-top: 10px;'><select class='adminSelect' name='rank_select'>".$rank_list."</td>
-										<td style='margin-top: 10px;'><input class='adminInput' type='text' placeholder=' Remark' name='rank_speciality'></td>
-										</tr>";		
-										} elseif ($_SESSION['loggedin'] && $enable_ranks != 'true'){
-										echo "<tr>
-										<td>". $members_uid ."</td>
-										<td>". $members_name ."</td>
-										<td>". $members_im ."</td>
-										<form name='promoteform' method='POST'>
-										<input type='hidden' name='select_hidden' value='". $members_uid ."'>
-										<td style='margin-top: 10px;'></td>
-										<td style='margin-top: 10px;'><input class='adminInput' type='text' placeholder=' Remark' name='rank_speciality'></td>
+										<td style='margin-top: 10px;'><input class='adminInput' type='text' placeholder=' " . $members_name . "' name='new_ign'></td>
+										<td style='margin-top: 10px;'><input class='adminInput' type='text' placeholder=' " . $members_remark . "' name='rank_speciality'></td>
 										</tr>";		
 										}
 
 										if(!$_SESSION['loggedin']){
 										echo '<tr class="remark">
-										<td>'.$img.'</td>
+										<td></td>
 										<td><i>-"' . str_replace("Banned", "<font color='red'><b>Banned</b></font>", $members_remark) . '"</i></td>
 										<td></td>
 										</tr>';
 										} elseif($_SESSION['loggedin']) {
 										echo '<tr class="remark">
-										<td>'.$img.'</td>
+										<td></td>
 										<td><i>-"' . str_replace("Banned", "<font color='red'><b>Banned</b></font>", $members_remark) . '"</i></td>
 										<td></td>
 										<input type="hidden" name="remove_hidden" value="'. $members_uid .'">

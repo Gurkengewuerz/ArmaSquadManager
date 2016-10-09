@@ -32,3 +32,8 @@ http://www.yourdomain.com/index.php?pid=PLAYERID
 Issues
 --------------
 If there are any issues please create a new issue in the "issues" tab or send in a pull request, I'll gladly review them :)
+
+
+Changelog
+--------------
+- Removed Database feature. A3SM is now only a Web Administration Tool for the Squad XML
